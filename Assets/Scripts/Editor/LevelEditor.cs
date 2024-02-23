@@ -116,7 +116,7 @@ public class LevelEditor : EditorWindow
     private void TrySpawnObject(RaycastHit hit)
     {
         Vector3 spawnPosition = (hit.point + hit.normal * prefabSize.y / 2);
-        Quaternion spawnRotation = Quaternion.identity;
+        Quaternion spawnRotation = rotationMesh;
 
         GameObject spawnedPrefab = (GameObject)PrefabUtility.InstantiatePrefab(selectedObject);
 
