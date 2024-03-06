@@ -113,6 +113,7 @@ public class LevelEditor : EditorWindow
         }
     }
 
+
     private void TrySpawnObject(RaycastHit hit)
     {
         Vector3 spawnPosition = (hit.point + hit.normal * prefabSize.y / 2);
@@ -122,7 +123,6 @@ public class LevelEditor : EditorWindow
 
         spawnedPrefab.transform.position = spawnPosition;
         spawnedPrefab.transform.rotation = spawnRotation;
-
 
         Undo.RegisterCreatedObjectUndo(spawnedPrefab, "Item");
     }
@@ -184,7 +184,7 @@ public class LevelEditor : EditorWindow
         Matrix4x4 pointToWorldMtx = Matrix4x4.TRS(drawPosition, rotationMesh, Vector3.one);
 
         MeshFilter[] objectMeshFilters = selectedObject.GetComponentsInChildren<MeshFilter>();
-
+         
         foreach (MeshFilter filter in objectMeshFilters)
         {
             Matrix4x4 childToPoint = filter.transform.localToWorldMatrix;
@@ -197,5 +197,42 @@ public class LevelEditor : EditorWindow
 
             Graphics.DrawMesh(mesh, childToWorldMatrix, material, 0, sceneView.camera);
         }
+
+        Door[] doors = selectedObject.GetComponentsInChildren<Door>();
+
+        foreach (Door door in doors)
+        {
+            Matrix4x4 childToPoint = door.transform.localToWorldMatrix;
+            Matrix4x4 childToWorldMatrix = pointToWorldMtx * childToPoint;
+            Vector3 position = childToWorldMatrix.GetColumn(3);
+            position = new Vector3(position.x, position.y, position.z);
+
+            Collider[] hitColliders = Physics.OverlapSphere(position, 3);
+            foreach (var hitCollider in hitColliders)
+            {
+                GameObject objHit = hitCollider.gameObject;
+
+                if (objHit.GetComponent<Door>()) 
+                {
+                    Vector3 directionAB = position - objHit.transform.position;
+                    Vector3 directionBA = objHit.transform.position - position;
+                    float dotProduct = Vector3.Dot(directionAB.normalized, directionBA.normalized);
+
+                    if (dotProduct < 0)
+                    {
+                        Debug.Log("Posso snappare");
+                        //TODO: Snappare gli oggetti
+                    }
+                    else
+                    {
+                        Debug.Log("Non posso snappare");
+                    }
+                }
+
+            }
+
+        }
+
+
     }
 }
