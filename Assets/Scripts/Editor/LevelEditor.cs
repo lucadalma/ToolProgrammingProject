@@ -17,6 +17,9 @@ public class LevelEditor : EditorWindow
     GameObject[] prefabs;
     private Vector3 prefabSize = new Vector3(1, 1, 1);
     Quaternion rotationMesh = Quaternion.identity;
+    Vector3 spawnPosition;
+    Vector3 drawPosition;
+    Matrix4x4 pointToWorldMtx;
 
     private void OnEnable()
     {
@@ -116,7 +119,7 @@ public class LevelEditor : EditorWindow
 
     private void TrySpawnObject(RaycastHit hit)
     {
-        Vector3 spawnPosition = (hit.point + hit.normal * prefabSize.y / 2);
+        Vector3 spawnPosition = drawPosition ;
         Quaternion spawnRotation = rotationMesh;
 
         GameObject spawnedPrefab = (GameObject)PrefabUtility.InstantiatePrefab(selectedObject);
@@ -152,6 +155,16 @@ public class LevelEditor : EditorWindow
         }
     }
 
+    public Vector3 SnapRoom(Vector3 doorPosition, Vector3 roomPosition, GameObject doorDestination)
+    {
+
+        Vector3 offset = roomPosition - doorPosition;
+
+        Vector3 snappedPosition = doorDestination.transform.position + offset;
+
+        return snappedPosition;
+    }
+
 
     private void DrawRoom(SceneView sceneView, RaycastHit hit, Event e) 
     {
@@ -179,26 +192,13 @@ public class LevelEditor : EditorWindow
             }
             Event.current.Use();
         }
-
-        Vector3 drawPosition = (hit.point + hit.normal * (prefabSize.y / 2));
-        Matrix4x4 pointToWorldMtx = Matrix4x4.TRS(drawPosition, rotationMesh, Vector3.one);
+        
+        drawPosition = (hit.point + hit.normal * (prefabSize.y / 2));
+        pointToWorldMtx = Matrix4x4.TRS(drawPosition, rotationMesh, Vector3.one);
 
         MeshFilter[] objectMeshFilters = selectedObject.GetComponentsInChildren<MeshFilter>();
-         
-        foreach (MeshFilter filter in objectMeshFilters)
-        {
-            Matrix4x4 childToPoint = filter.transform.localToWorldMatrix;
-            Matrix4x4 childToWorldMatrix = pointToWorldMtx * childToPoint;
-
-            Mesh mesh = filter.sharedMesh;
-            Material material = filter.GetComponent<MeshRenderer>().sharedMaterial;
-
-            material.SetPass(0);
-
-            Graphics.DrawMesh(mesh, childToWorldMatrix, material, 0, sceneView.camera);
-        }
-
         Door[] doors = selectedObject.GetComponentsInChildren<Door>();
+
 
         foreach (Door door in doors)
         {
@@ -212,27 +212,37 @@ public class LevelEditor : EditorWindow
             {
                 GameObject objHit = hitCollider.gameObject;
 
-                if (objHit.GetComponent<Door>()) 
+                if (objHit.GetComponent<Door>())
                 {
                     Vector3 directionAB = position - objHit.transform.position;
                     Vector3 directionBA = objHit.transform.position - position;
                     float dotProduct = Vector3.Dot(directionAB.normalized, directionBA.normalized);
-
                     if (dotProduct < 0)
                     {
                         Debug.Log("Posso snappare");
                         //TODO: Snappare gli oggetti
+                        drawPosition = SnapRoom(position, (hit.point + hit.normal * prefabSize.y / 2) , objHit);
+                        pointToWorldMtx = Matrix4x4.TRS(drawPosition, rotationMesh, Vector3.one);
                     }
-                    else
-                    {
-                        Debug.Log("Non posso snappare");
-                    }
+
                 }
 
             }
 
         }
 
+        foreach (MeshFilter filter in objectMeshFilters)
+        {
+            Matrix4x4 childToPoint = filter.transform.localToWorldMatrix;
+            Matrix4x4 childToWorldMatrix = pointToWorldMtx * childToPoint;
+
+            Mesh mesh = filter.sharedMesh;
+            Material material = filter.GetComponent<MeshRenderer>().sharedMaterial;
+
+            material.SetPass(0);
+
+            Graphics.DrawMesh(mesh, childToWorldMatrix, material, 0, sceneView.camera);
+        }
 
     }
 }
