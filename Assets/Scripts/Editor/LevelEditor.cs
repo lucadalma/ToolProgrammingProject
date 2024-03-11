@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
+using UnityEditor.SceneManagement;
 
 public class LevelEditor : EditorWindow
 {
@@ -17,7 +18,6 @@ public class LevelEditor : EditorWindow
     GameObject[] prefabs;
     private Vector3 prefabSize = new Vector3(1, 1, 1);
     Quaternion rotationMesh = Quaternion.identity;
-    Vector3 spawnPosition;
     Vector3 drawPosition;
     Matrix4x4 pointToWorldMtx;
 
@@ -54,7 +54,16 @@ public class LevelEditor : EditorWindow
             GUI.FocusControl(null);
             Repaint();
         }
+
+        GUILayout.Label("Undo Object Positioning", EditorStyles.boldLabel);
+
+        if (GUILayout.Button("Undo"))
+        {
+            Undo.PerformUndo(); 
+        }
+
     }
+
 
     int index = 0;
 
@@ -217,10 +226,10 @@ public class LevelEditor : EditorWindow
                     Vector3 directionAB = position - objHit.transform.position;
                     Vector3 directionBA = objHit.transform.position - position;
                     float dotProduct = Vector3.Dot(directionAB.normalized, directionBA.normalized);
+                    Debug.Log(dotProduct);
                     if (dotProduct < 0)
                     {
-                        Debug.Log("Posso snappare");
-                        //TODO: Snappare gli oggetti
+                        //Debug.Log("Posso snappare");
                         drawPosition = SnapRoom(position, (hit.point + hit.normal * prefabSize.y / 2) , objHit);
                         pointToWorldMtx = Matrix4x4.TRS(drawPosition, rotationMesh, Vector3.one);
                     }
