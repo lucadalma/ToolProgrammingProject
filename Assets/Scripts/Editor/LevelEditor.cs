@@ -5,6 +5,12 @@ using UnityEditor;
 using System.Linq;
 using UnityEditor.SceneManagement;
 
+
+/*
+ Per il funzionamento del tool, premendo alt e rotellina si può ruotare la stanza di 90 gradi in base alla direzzione della rotazione della rotellina
+ Per cambiare stanza da istasnziare, con Shift e la rotellina posso scegliere tra i vari prefab
+ Per istanziare la stanza, premere Space
+ */
 public class LevelEditor : EditorWindow
 {
 
@@ -28,6 +34,7 @@ public class LevelEditor : EditorWindow
 
         SceneView.duringSceneGui += DuringSceneGUI;
 
+        //Mi prendo i prefab dalla cartella
         string[] guids = AssetDatabase.FindAssets("t:prefab", new[] { "Assets/RoomPrefabs" });
         IEnumerable<string> paths = guids.Select(AssetDatabase.GUIDToAssetPath);
         prefabs = paths.Select(AssetDatabase.LoadAssetAtPath<GameObject>).ToArray();
@@ -49,12 +56,14 @@ public class LevelEditor : EditorWindow
             SceneView.RepaintAll();
         }
 
+
         if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
         {
             GUI.FocusControl(null);
             Repaint();
         }
 
+        //Bottone per undo
         GUILayout.Label("Undo Object Positioning", EditorStyles.boldLabel);
 
         if (GUILayout.Button("Undo"))
@@ -76,9 +85,12 @@ public class LevelEditor : EditorWindow
 
         Event e = Event.current;
 
+
+        //Selezione del prefab che si vuole istanziare
         if (e.type == EventType.ScrollWheel && e.shift)
         {
             scrollDelta = Mathf.Sign(e.delta.y);
+            //in base alla direzione dello scroll del mouse posso navigare tra le varie stanze
             if (scrollDelta == -1)
             {
                 index = (index - 1 + prefabs.Length) % prefabs.Length;
@@ -87,37 +99,41 @@ public class LevelEditor : EditorWindow
             {
                 index = (index + 1) % prefabs.Length;
             }
+            //rotazione base
             rotationMesh = Quaternion.identity;
         }
 
-
+        //Funzione per mostrare in scena i vari prefab
         ShowObjectsIcon(prefabs);
 
-
+        //Mi prendo il prefab attualmente selezionato
         selectedObject = prefabs[index];
 
-        Handles.zTest = UnityEngine.Rendering.CompareFunction.LessEqual;
 
-        //controlli del tool
-        //Transform camIf = view.camera.transform;
+        Handles.zTest = UnityEngine.Rendering.CompareFunction.LessEqual;
 
         if (Event.current.type == EventType.MouseMove)
         {
             view.Repaint();
         }
 
+        //Casto il ray dome ho la posizione del mouse 
         Ray ray = HandleUtility.GUIPointToWorldRay(Event.current.mousePosition);
 
         if (Physics.Raycast(ray, out RaycastHit hit) && hit.collider != null)
         {
+            //controllo eventuali errori
             if (selectedObject == null)
             {
-                Debug.LogError("selectedObject shouldn't be null! Check content folder!");
+                Debug.LogError("Non ci sono prefab!");
                 return;
             }
 
+            //Funzione per disegnare la mesh della stanza
             DrawRoom(view, hit, e);
 
+
+            //se premo space, provo ad instanziare la stanza
             if (Event.current.keyCode == KeyCode.Space && Event.current.type == EventType.KeyDown)
             {
                 TrySpawnObject(hit);
@@ -128,9 +144,12 @@ public class LevelEditor : EditorWindow
 
     private void TrySpawnObject(RaycastHit hit)
     {
+        //mi ottengo la posizione e la rotazione i spawn
         Vector3 spawnPosition = drawPosition ;
         Quaternion spawnRotation = rotationMesh;
 
+
+        //istanzio il prefab
         GameObject spawnedPrefab = (GameObject)PrefabUtility.InstantiatePrefab(selectedObject);
 
         spawnedPrefab.transform.position = spawnPosition;
@@ -139,7 +158,7 @@ public class LevelEditor : EditorWindow
         Undo.RegisterCreatedObjectUndo(spawnedPrefab, "Item");
     }
 
-
+    //funzione per mostrare le icone delle stanza
     private void ShowObjectsIcon(GameObject[] objects)
     {
         for (int i = 0; i < objects.Length; i++)
@@ -164,6 +183,7 @@ public class LevelEditor : EditorWindow
         }
     }
 
+    //funzione che mi snappa la stanza alla posizione della porta
     public Vector3 SnapRoom(Vector3 doorPosition, Vector3 roomPosition, GameObject doorDestination)
     {
 
@@ -174,7 +194,7 @@ public class LevelEditor : EditorWindow
         return snappedPosition;
     }
 
-
+    //Funzione per disegnare la stanza
     private void DrawRoom(SceneView sceneView, RaycastHit hit, Event e) 
     {
 
@@ -187,6 +207,7 @@ public class LevelEditor : EditorWindow
 
         bool holdingAlt = (Event.current.modifiers & EventModifiers.Alt) != 0;
 
+        //Ruoto la stanza
         if (Event.current.type == EventType.ScrollWheel && holdingAlt)
         {
             float scrollDirection = Mathf.Sign(Event.current.delta.y);
@@ -208,7 +229,7 @@ public class LevelEditor : EditorWindow
         MeshFilter[] objectMeshFilters = selectedObject.GetComponentsInChildren<MeshFilter>();
         Door[] doors = selectedObject.GetComponentsInChildren<Door>();
 
-
+        //mi ottengo le porte e le loro corispettive posizioni
         foreach (Door door in doors)
         {
             Matrix4x4 childToPoint = door.transform.localToWorldMatrix;
@@ -216,6 +237,7 @@ public class LevelEditor : EditorWindow
             Vector3 position = childToWorldMatrix.GetColumn(3);
             position = new Vector3(position.x, position.y, position.z);
 
+            //faccio un overlap sphere
             Collider[] hitColliders = Physics.OverlapSphere(position, 3);
             foreach (var hitCollider in hitColliders)
             {
@@ -239,7 +261,7 @@ public class LevelEditor : EditorWindow
             }
 
         }
-
+        //disegno la stanza
         foreach (MeshFilter filter in objectMeshFilters)
         {
             Matrix4x4 childToPoint = filter.transform.localToWorldMatrix;
